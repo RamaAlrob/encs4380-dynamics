@@ -1,0 +1,449 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dynamic Characteristics Toolkit</title>
+
+  <script src="https://cdn.plot.ly/plotly-3.0.1.min.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f3f6fb;
+      color: #172033;
+    }
+
+    header {
+      background: #142744;
+      color: white;
+      padding: 28px 20px;
+      text-align: center;
+    }
+
+    header p { color: #d6e2f2; }
+
+    main {
+      max-width: 1100px;
+      margin: 24px auto;
+      padding: 0 16px;
+    }
+
+    .card {
+      background: white;
+      padding: 22px;
+      border-radius: 14px;
+      margin-bottom: 20px;
+      box-shadow: 0 3px 14px #182d4910;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 24px;
+    }
+
+    label { font-weight: bold; }
+
+    input[type="range"], select {
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    select, button {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccd5e2;
+    }
+
+    button {
+      background: #1d4ed8;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover { background: #173eae; }
+
+    .value {
+      color: #1d4ed8;
+      font-weight: bold;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+    }
+
+    .metric {
+      background: #eef4ff;
+      border-radius: 10px;
+      padding: 15px;
+    }
+
+    .metric strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 22px;
+    }
+
+    .plot { width: 100%; min-height: 320px; }
+
+    .hint {
+      background: #fff7df;
+      padding: 14px;
+      border-radius: 8px;
+      margin-top: 12px;
+    }
+
+    .pass { color: #16803d; }
+    .fail { color: #c62828; }
+
+    footer {
+      text-align: center;
+      color: #64748b;
+      padding: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>Dynamic Characteristics Toolkit</h1>
+  <p>ENCS4380 | Interfacing Techniques</p>
+  <p>Module 1: First-Order Time Response</p>
+</header>
+
+<main>
+
+  <section class="card">
+    <h2>1. System Parameters</h2>
+    <p>
+      First-order system:
+      <strong>τ dy/dt + y = Kx</strong>
+    </p>
+
+    <div class="controls">
+      <div>
+        <label for="gain">Gain K:
+          <span id="kValue" class="value">1.0</span>
+        </label>
+        <input id="gain" type="range"
+          min="0.5" max="3" step="0.1" value="1">
+      </div>
+
+      <div>
+        <label for="tau">Time constant τ:
+          <span id="tauValue" class="value">10 s</span>
+        </label>
+        <input id="tau" type="range"
+          min="1" max="20" step="0.5" value="10">
+      </div>
+
+      <div>
+        <label for="amplitude">Input amplitude A:
+          <span id="aValue" class="value">1</span>
+        </label>
+        <input id="amplitude" type="range"
+          min="0.5" max="5" step="0.5" value="1">
+      </div>
+
+      <div>
+        <label for="inputType">Input type</label>
+        <select id="inputType">
+          <option value="step">Step input</option>
+          <option value="ramp">Ramp input</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>2. Predict, Then Check</h2>
+    <p>
+      For a step input, what percentage of the final output
+      do you expect at t = τ?
+    </p>
+
+    <div class="controls">
+      <div>
+        <label for="prediction">Your prediction (%)</label>
+        <input id="prediction" type="number"
+          min="0" max="100" value="63">
+      </div>
+      <div style="align-self:end">
+        <button id="checkPrediction">Check My Prediction</button>
+      </div>
+    </div>
+
+    <p id="predictionResult" aria-live="polite">
+      Make your prediction before checking.
+    </p>
+  </section>
+
+  <section class="card">
+    <h2>3. Time Response</h2>
+    <p>
+      The curve updates automatically when you change a parameter.
+    </p>
+    <div id="responsePlot" class="plot"></div>
+  </section>
+
+  <section class="card">
+    <h2>4. Important Measurements</h2>
+
+    <div class="metrics">
+      <div class="metric">
+        Output at t = τ
+        <strong id="atTau">63.2%</strong>
+      </div>
+
+      <div class="metric">
+        Output at t = 3τ
+        <strong id="at3Tau">95.0%</strong>
+      </div>
+
+      <div class="metric">
+        Final value (step)
+        <strong id="finalValue">1.00</strong>
+      </div>
+
+      <div class="metric">
+        Ramp steady-state error
+        <strong id="rampError">10.00</strong>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>5. Error-Fraction Plot</h2>
+    <p>
+      For a step input, the error fraction is
+      e(t) = exp(-t/τ). Its natural logarithm is a straight
+      line with slope -1/τ.
+    </p>
+    <div id="errorPlot" class="plot"></div>
+  </section>
+
+  <section class="card">
+    <h2>6. Validation Checks</h2>
+    <p>Expected results are compared with calculated values.</p>
+    <div id="validation"></div>
+  </section>
+
+</main>
+
+<footer>
+  ENCS4380 Homework 1 | Dynamic Characteristics Toolkit
+</footer>
+
+<script>
+  const $ = id => document.getElementById(id);
+
+  function calculate() {
+    const K = Number($("gain").value);
+    const tau = Number($("tau").value);
+    const A = Number($("amplitude").value);
+    const type = $("inputType").value;
+
+    $("kValue").textContent = K.toFixed(1);
+    $("tauValue").textContent = tau.toFixed(1) + " s";
+    $("aValue").textContent = A.toFixed(1);
+
+    const finalValue = K * A;
+    const times = [];
+    const output = [];
+    const input = [];
+    const errorTimes = [];
+    const errorFractions = [];
+    const logErrors = [];
+
+    const endTime = 5 * tau;
+    const n = 250;
+
+    for (let i = 0; i <= n; i++) {
+      const t = endTime * i / n;
+      times.push(t);
+
+      if (type === "step") {
+        input.push(A);
+        output.push(finalValue * (1 - Math.exp(-t / tau)));
+
+        // Skip t=0 because log(1)=0 is valid,
+        // but use positive times for the log plot.
+        if (t > 0) {
+          errorTimes.push(t);
+          errorFractions.push(Math.exp(-t / tau));
+          logErrors.push(-t / tau);
+        }
+      } else {
+        input.push(A * t);
+        output.push(K * A *
+          (t - tau + tau * Math.exp(-t / tau)));
+      }
+    }
+
+    const traces = [
+      {
+        x: times,
+        y: input,
+        name: "Input x(t)",
+        line: { dash: "dash" }
+      },
+      {
+        x: times,
+        y: output,
+        name: "Output y(t)",
+        line: { width: 3 }
+      }
+    ];
+
+    if (type === "step") {
+      traces.push({
+        x: [tau, tau],
+        y: [0, finalValue * (1 - Math.exp(-1))],
+        mode: "markers",
+        name: "63.2% at τ",
+        marker: { size: 10 }
+      });
+
+      traces.push({
+        x: [3 * tau, 3 * tau],
+        y: [0, finalValue * (1 - Math.exp(-3))],
+        mode: "markers",
+        name: "95.0% at 3τ",
+        marker: { size: 10 }
+      });
+    }
+
+    Plotly.react("responsePlot", traces, {
+      title: type === "step" ?
+        "First-Order Step Response" :
+        "First-Order Ramp Response",
+      xaxis: { title: "Time (s)" },
+      yaxis: { title: "Amplitude" },
+      margin: { t: 55, r: 20, l: 55, b: 55 },
+      legend: { orientation: "h" },
+      autosize: true
+    }, { responsive: true });
+
+    $("atTau").textContent =
+      (100 * (1 - Math.exp(-1))).toFixed(1) + "%";
+
+    $("at3Tau").textContent =
+      (100 * (1 - Math.exp(-3))).toFixed(1) + "%";
+
+    $("finalValue").textContent =
+      finalValue.toFixed(2);
+
+    $("rampError").textContent =
+      (K * A * tau).toFixed(2);
+
+    if (type === "step") {
+      Plotly.react("errorPlot", [
+        {
+          x: errorTimes,
+          y: errorFractions,
+          name: "Error fraction",
+          mode: "lines"
+        },
+        {
+          x: errorTimes,
+          y: logErrors,
+          name: "ln(error fraction)",
+          mode: "lines"
+        }
+      ], {
+        title: "Error Fraction and Its Natural Log",
+        xaxis: { title: "Time (s)" },
+        yaxis: {
+          title: "Value",
+          type: "linear"
+        },
+        margin: { t: 55, r: 20, l: 55, b: 55 },
+        legend: { orientation: "h" }
+      }, { responsive: true });
+    } else {
+      Plotly.react("errorPlot", [], {
+        title: "Error-Fraction Plot",
+        annotations: [{
+          text: "Select Step input to display the exponential error fraction.",
+          showarrow: false,
+          x: 0.5,
+          y: 0.5,
+          xref: "paper",
+          yref: "paper"
+        }],
+        xaxis: { visible: false },
+        yaxis: { visible: false }
+      }, { responsive: true });
+    }
+
+    const checks = [
+      {
+        name: "At t = τ",
+        expected: 0.63212056 * finalValue,
+        actual: finalValue * (1 - Math.exp(-1))
+      },
+      {
+        name: "At t = 3τ",
+        expected: 0.95021293 * finalValue,
+        actual: finalValue * (1 - Math.exp(-3))
+      }
+    ];
+
+    $("validation").innerHTML = checks.map(c => {
+      const pass = Math.abs(c.expected - c.actual) < 0.0001;
+      return `
+        <p>
+          <strong>${c.name}</strong>:
+          Expected = ${c.expected.toFixed(4)},
+          Calculated = ${c.actual.toFixed(4)}
+          — <span class="${pass ? "pass" : "fail"}">
+            ${pass ? "PASS" : "FAIL"}
+          </span>
+        </p>`;
+    }).join("");
+  }
+
+  $("checkPrediction").addEventListener("click", () => {
+    if ($("inputType").value !== "step") {
+      $("predictionResult").textContent =
+        "Select Step input to answer this question.";
+      return;
+    }
+
+    const guess = Number($("prediction").value);
+    const actual = 100 * (1 - Math.exp(-1));
+
+    if (!Number.isFinite(guess) || guess < 0 || guess > 100) {
+      $("predictionResult").textContent =
+        "Enter a percentage between 0 and 100.";
+      return;
+    }
+
+    $("predictionResult").textContent =
+      `Your answer: ${guess.toFixed(1)}%. ` +
+      `Actual answer: ${actual.toFixed(1)}%. ` +
+      (Math.abs(guess - actual) <= 2 ?
+        "Correct! Great prediction." :
+        "Not quite. At one time constant, the output reaches 63.2%.");
+  });
+
+  ["gain", "tau", "amplitude", "inputType"].forEach(id => {
+    $(id).addEventListener("input", calculate);
+    $(id).addEventListener("change", calculate);
+  });
+
+  calculate();
+</script>
+
+</body>
+</html>
